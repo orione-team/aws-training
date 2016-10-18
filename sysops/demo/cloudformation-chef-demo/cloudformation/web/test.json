@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "testing"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-01b47e65"
+  },
+  {
+    "ParameterKey": "Subnets",
+    "ParameterValue": "subnet-11798849,subnet-0379885b"
+  },
+  {
+    "ParameterKey": "AmiId",
+    "ParameterValue": "ami-0ae77879"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "m4.medium"
+  },
+  {
+    "ParameterKey": "WebServerPort",
+    "ParameterValue": "80"
+  },
+  {
+    "ParameterKey": "MyIpAddress",
+    "ParameterValue": "0.0.0.0/0"
+  },
+  {
+    "ParameterKey": "InstanceRole",
+    "ParameterValue": "trainer-selfconfiguration"
+  }
+]

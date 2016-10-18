@@ -1,0 +1,180 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Training WEB Tier",
+
+  "Parameters" : {
+
+    "Environment" : {
+      "Type" : "String"
+    },
+
+    "VpcId" : {
+      "Type" : "String"
+    },
+
+    "Subnets" : {
+      "Type" : "CommaDelimitedList"
+    },
+
+    "AmiId" : {
+      "Type" : "String"
+    },
+
+    "InstanceType" : {
+      "Type" : "String"
+    },
+
+    "WebServerPort" : {
+      "Type" : "String"
+    },
+
+    "MyIpAddress" : {
+      "Type" : "String"
+    },
+
+    "InstanceRole" : {
+      "Type" : "String"
+    }
+  },
+
+  "Resources" : {
+
+    "WebserverInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "bootsrap_instance" : ["configure_chef", "run_chef"]
+          },
+          "configure_chef" : {
+            "files" : {
+              "/var/chef/chef-repo/.chef/knife.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks/Training/berks-cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/var/chef/chef-repo/.chef/client.rb" : {
+                "content" : { "Fn::Join": [ "", [
+                  "cookbook_path [ '/var/chef/chef-repo/cookbooks/Training/berks-cookbooks' ]\n",
+                  "node_path [ '/var/chef/chef-repo/nodes' ]\n"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/var/chef/chef-repo/rails_env.json" : {
+                "content" : { "Fn::Join": [ "", [
+                  "{\n",
+                  "    \"Training\": {\n",
+                  "         \"rails_env\": ", "\"",{ "Ref" : "Environment"}, "\"\n",
+                  "    }\n",
+                  "}"
+                ]]},
+                "mode"  : "000400",
+                "owner" : "root",
+                "group" : "root"
+              }
+            },
+            "commands" : {
+              "01_get_cookbook" : {
+                "command" : "wget https://s3-eu-west-1.amazonaws.com/provisioning.training.xpeppers.com/chef/demo.tar.gz",
+                "cwd" : "/var/tmp"
+              },
+              "02_unpack_cookbook" : {
+                "command" : "mkdir /var/chef/chef-repo/cookbooks && tar xvfz /var/tmp/Training.tar.gz -C /var/chef/chef-repo/cookbooks",
+                "cwd" : "/var/tmp/"
+              },
+              "03_vendorize_berkshelf" : {
+                "command" : "berks vendor",
+                "cwd" : "/var/chef/chef-repo/cookbooks/Training",
+                "env" : { "HOME" : "/var/chef" , "LANG" : "en_US.UTF-8" }
+              },
+              "04_start_chef_client" : {
+                "command" : "chef-client -z -c /var/chef/chef-repo/.chef/client.rb",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              },
+              "05_configure_node_run_list" : {
+                "command" : "knife node run_list add -z `knife node list -z` recipe[Training::default] recipe[Training::deploy] recipe[Training::logging] recipe[Training::monitoring]",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              }
+            }
+          },
+          "run_chef" : {
+            "commands" : {
+              "01_run_chef_client" : {
+                "command" : "chef-client -z -c /var/chef/chef-repo/.chef/client.rb -j rails_env.json",
+                "cwd" : "/var/chef/chef-repo",
+                "env" : { "HOME" : "/var/chef" }
+              }
+            }
+          }
+        }
+      },
+      "Properties" : {
+        "ImageId" : { "Ref" : "AmiId" },
+        "Tags" : [
+            {
+                "Key" : "Name",
+                "Value" : { "Fn::Join" : [ "-", [ "Training", { "Ref" : "Environment"} ]]}
+            }
+        ],
+        "KeyName" : "EU-West-Training",
+        "SecurityGroupIds" : [ { "Ref" : "WebServerInstanceSecurityGroup" } ],
+        "SubnetId" : { "Fn::Select" : [ "0", {"Ref": "Subnets"} ] },
+        "InstanceType" : { "Ref" : "InstanceType" },
+        "IamInstanceProfile": { "Ref": "InstanceRole" },
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                      "#!/bin/bash\n",
+                      "apt-get update\n",
+                      "apt-get -y install python-setuptools\n",
+                      "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                      "curl -O https://opscode-omnibus-packages.s3.amazonaws.com/ubuntu/12.04/x86_64/chefdk_0.3.6-1_amd64.deb\n",
+                      "dpkg -i chefdk_0.3.6-1_amd64.deb\n",
+
+                      "cfn-init -v ",
+                      "         --stack ", { "Ref" : "AWS::StackName" },
+                      "         --resource WebserverInstance ",
+                      "         --configsets bootsrap_instance ",
+                      "         --region ", { "Ref" : "AWS::Region" }, "\n"
+        ]]}}
+      }
+    },
+
+    "WebServerInstanceSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable HTTP access on the configured port",
+        "VpcId" : { "Ref" : "VpcId" },
+        "SecurityGroupIngress" :
+        [
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : { "Ref" : "WebServerPort" },
+            "ToPort" : { "Ref" : "WebServerPort" },
+            "CidrIp" : { "Ref" : "MyIpAddress" }
+          },
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "22",
+            "ToPort" : "22",
+            "CidrIp" : { "Ref" : "MyIpAddress" }
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "SecurityGroup" : {
+      "Description" : "Security Group Instance",
+      "Value" :  { "Ref" : "WebServerInstanceSecurityGroup" }
+    }
+  }
+}
