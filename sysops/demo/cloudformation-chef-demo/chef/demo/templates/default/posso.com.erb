@@ -1,0 +1,35 @@
+upstream posso {
+  server 127.0.0.1:3000;
+  server 127.0.0.1:3001;
+  server 127.0.0.1:3002;
+}
+
+server {
+  keepalive_timeout  180;
+  client_max_body_size  21M;
+  listen 80 default_server;
+  server_name localhost;
+
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+  root     /vagrant;
+  index    index.html;
+
+  location / {
+    proxy_set_header  X-Real-IP  $remote_addr;
+    proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header  Host $http_host;
+    proxy_redirect  off;
+
+    try_files /system/maintenance.html $uri $uri/index.html $uri.html @ruby;
+
+    <% if @restricted %>
+      auth_basic "Restricted";
+      auth_basic_user_file /etc/nginx/.htpasswd;
+    <% end %>
+  }
+
+  location @ruby {
+    proxy_pass http://posso;
+  }
+}

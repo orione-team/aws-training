@@ -1,0 +1,56 @@
+[general]
+# Path to the AWSLogs agent's state file. Agent uses this file to maintain
+# client side state across its executions.
+state_file = /var/awslogs/state/agent-state
+
+
+## Each log file is defined in its own section. The section name doesn't
+## matter as long as its unique within this file.
+#
+#[kern.log]
+#
+## Path of log file for the agent to monitor and upload.
+#
+#file = /var/log/kern.log
+#
+## Name of the destination log group.
+#
+#log_group_name = kern.log
+#
+## Name of the destination log stream.
+#
+#log_stream_name = {instance_id}
+#
+## Format specifier for timestamp parsing.
+#
+#datetime_format = %b %d %H:%M:%S
+#
+
+[/var/log/thin/thin300*.log]
+datetime_format = %d/%b/%Y:%H:%M:%S
+file = /var/log/thin/thin.300*.log
+buffer_duration = 5000
+log_stream_name = Thin
+initial_position = start_of_file
+log_group_name = Posso-<%= @rails_env %>
+[/var/www/posso/current/log/*.log]
+datetime_format = %d/%b/%Y:%H:%M:%S
+file = /var/www/posso/current/log/*.log
+buffer_duration = 5000
+log_stream_name = Rails
+initial_position = start_of_file
+log_group_name = Posso-<%= @rails_env %>
+[/var/log/nginx/access.log*]
+datetime_format = %d/%b/%Y:%H:%M:%S
+file = /var/log/nginx/access.log*
+buffer_duration = 5000
+log_stream_name = AccessLogs
+initial_position = start_of_file
+log_group_name = Posso-<%= @rails_env %>
+[/var/log/nginx/error.log*]
+datetime_format = %d/%b/%Y:%H:%M:%S
+file = /var/log/nginx/error.log*
+buffer_duration = 5000
+log_stream_name = ErrorLogs
+initial_position = start_of_file
+log_group_name = Posso-<%= @rails_env %>

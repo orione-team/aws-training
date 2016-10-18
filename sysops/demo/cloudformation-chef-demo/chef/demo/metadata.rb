@@ -1,0 +1,11 @@
+name 'demo'
+version '0.1.0'
+
+depends 'apt'
+depends 'sudo'
+depends 'nodejs'
+depends 'htpasswd'
+depends 'nginx'
+depends 'mysql', '> 6.0'
+depends 'mysql2_chef_gem'
+depends 'database'

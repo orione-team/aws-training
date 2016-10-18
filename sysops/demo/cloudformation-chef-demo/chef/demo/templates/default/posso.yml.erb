@@ -1,0 +1,17 @@
+---
+user: www-data
+group: www-data
+chdir: "/var/www/posso/current"
+environment: <%= @rails_env %>
+address: 0.0.0.0
+port: 3000
+timeout: 120
+log: "/var/log/thin/thin.log"
+pid: "/var/lock/thin.pid"
+max_conns: 1024
+max_persistent_conns: 100
+require: []
+wait: 30
+threadpool_size: 20
+servers: 3
+daemonize: true
